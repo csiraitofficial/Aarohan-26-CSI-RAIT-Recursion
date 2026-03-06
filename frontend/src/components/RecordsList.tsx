@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Calendar, FileText, MoreVertical, Pencil, Stethoscope,
-  Trash2, ExternalLink, Clock, User, Clipboard
+  Trash2, Clock, User, Clipboard
 } from 'lucide-react';
 import { getAuth } from "firebase/auth";
 import {
@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dialog";
 import { HEALTH_ENDPOINTS } from "@/lib/config";
 import EditRecordForm from "./EditRecordForm";
+import PdfThumbnail from "./PdfThumbnail";
 
 interface Record {
   id: string;
@@ -61,7 +62,7 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
   const [recordToEdit, setRecordToEdit] = useState<Record | null>(null);
   const [viewingDocument, setViewingDocument] = useState<string | null>(null);
 
-  const recordsPerPage = 3;
+  const recordsPerPage = 6;
 
   const sortRecordsByDate = (records: Record[]) => {
     return [...records].sort((a, b) => {
@@ -137,10 +138,10 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
   const getRecordTheme = (type: string) => {
     const t = type.toLowerCase();
     switch (t) {
-      case 'test': return { icon: <FileText className="h-5 w-5" />, color: "text-amber-600", bg: "bg-amber-50", stripe: "bg-amber-500" };
-      case 'consultation': return { icon: <Stethoscope className="h-5 w-5" />, color: "text-blue-600", bg: "bg-blue-50", stripe: "bg-blue-500" };
-      case 'surgery': return { icon: <Calendar className="h-5 w-5" />, color: "text-rose-600", bg: "bg-rose-50", stripe: "bg-rose-500" };
-      default: return { icon: <Clipboard className="h-5 w-5" />, color: "text-slate-600", bg: "bg-slate-50", stripe: "bg-slate-400" };
+      case 'test': return { icon: <FileText className="h-5 w-5" />, color: "text-amber-600", bg: "bg-amber-50", stripe: "bg-amber-500", accent: "bg-amber-100" };
+      case 'consultation': return { icon: <Stethoscope className="h-5 w-5" />, color: "text-blue-600", bg: "bg-blue-50", stripe: "bg-blue-500", accent: "bg-blue-100" };
+      case 'surgery': return { icon: <Calendar className="h-5 w-5" />, color: "text-rose-600", bg: "bg-rose-50", stripe: "bg-rose-500", accent: "bg-rose-100" };
+      default: return { icon: <Clipboard className="h-5 w-5" />, color: "text-slate-600", bg: "bg-slate-50", stripe: "bg-slate-400", accent: "bg-slate-100" };
     }
   };
 
@@ -164,38 +165,38 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
   };
 
   const renderTestDetails = (details: any) => (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-      {details.tests?.map((test: any, index: number) => (
-        <div key={index} className="flex flex-col p-3 rounded-xl border border-slate-100 bg-slate-50/50">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">{test.parameter}</span>
-          <div className="flex justify-between items-center">
-            <span className="text-lg font-semibold text-slate-700">{test.value}</span>
-            <Badge variant={test.result === 'normal' ? 'outline' : 'destructive'} className="capitalize">
-              {test.result}
-            </Badge>
-          </div>
+    <div className="space-y-1.5">
+      {details.tests?.slice(0, 3).map((test: any, index: number) => (
+        <div key={index} className="flex justify-between items-center text-xs">
+          <span className="text-slate-500 truncate mr-2">{test.parameter}</span>
+          <Badge variant={test.result === 'normal' ? 'outline' : 'destructive'} className="capitalize text-[10px] px-1.5 py-0">
+            {test.result}
+          </Badge>
         </div>
       ))}
+      {details.tests?.length > 3 && (
+        <p className="text-[10px] text-slate-400">+{details.tests.length - 3} more tests</p>
+      )}
     </div>
   );
 
   const renderConsultationDetails = (details: any) => (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 text-slate-700 font-medium">
-        <User className="h-4 w-4 text-blue-500" /> {details.doctorName}
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5 text-xs text-slate-600">
+        <User className="h-3 w-3 text-blue-500 shrink-0" />
+        <span className="truncate">{details.doctorName}</span>
       </div>
-      <div className="p-4 bg-white rounded-xl border border-blue-100 shadow-sm italic text-slate-600 text-sm leading-relaxed">
-        "{details.doctorNote}"
-      </div>
+      {details.doctorNote && (
+        <p className="text-xs text-slate-500 italic line-clamp-2">"{details.doctorNote}"</p>
+      )}
     </div>
   );
 
   const renderSurgeryDetails = (details: any) => (
-    <div className="space-y-3">
-      <div className="p-4 bg-rose-50/50 rounded-xl border border-rose-100">
-        <h4 className="text-xs font-bold uppercase text-rose-400 mb-2">Procedure Details</h4>
-        <p className="text-slate-700 text-sm leading-relaxed">{details.surgeryDetails}</p>
-      </div>
+    <div className="space-y-1.5">
+      {details.surgeryDetails && (
+        <p className="text-xs text-slate-500 line-clamp-3">{details.surgeryDetails}</p>
+      )}
     </div>
   );
 
@@ -207,18 +208,15 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
       case 'surgery': return renderSurgeryDetails(record.details);
       default:
         return (
-          <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-            <h4 className="text-xs font-bold uppercase text-slate-400 mb-2">Note</h4>
-            <p className="text-slate-700 text-sm leading-relaxed">
-              {record.details.notes || "No additional information provided."}
-            </p>
-          </div>
+          <p className="text-xs text-slate-500 line-clamp-2">
+            {record.details.notes || "No additional information."}
+          </p>
         );
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+    <div className="w-full px-4 py-8 space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">Medical Records</h2>
@@ -229,75 +227,105 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
         </Badge>
       </div>
 
-      <div className="grid gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {currentRecords.length > 0 ? (
           currentRecords.map((record) => {
             const theme = getRecordTheme(record.type);
             const date = record.details.consultationDate || record.details.surgeryDate;
 
             return (
-              <Card key={record.id} className="group overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 ring-1 ring-slate-200">
-                <div className={`h-1.5 w-full ${theme.stripe}`} />
-                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                  <div className="flex gap-4">
-                    <div className={`p-3 rounded-2xl ${theme.bg} ${theme.color} transition-transform group-hover:scale-110 duration-300`}>
-                      {theme.icon}
+              <Card
+                key={record.id}
+                className="group overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 ring-1 ring-slate-200 flex flex-col"
+              >
+                {/* Top: PDF thumbnail or placeholder */}
+                <div className="relative h-44 w-full overflow-hidden">
+                  {record.uploaded_file_url ? (
+                    <PdfThumbnail
+                      url={record.uploaded_file_url}
+                      onClick={() => setViewingDocument(record.uploaded_file_url!)}
+                      className="h-full w-full"
+                    />
+                  ) : (
+                    <div className={`h-full w-full flex flex-col items-center justify-center ${theme.accent} transition-colors`}>
+                      <div className={`p-4 rounded-2xl ${theme.bg} ${theme.color} mb-2`}>
+                        {React.cloneElement(theme.icon as React.ReactElement, { className: "h-8 w-8" })}
+                      </div>
+                      <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">{record.type} Record</span>
                     </div>
+                  )}
+
+                  {/* Colored stripe at top */}
+                  <div className={`absolute top-0 left-0 right-0 h-1 ${theme.stripe}`} />
+
+                  {/* 3-dot menu overlay */}
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="secondary" className="h-8 w-8 p-0 rounded-full shadow-md bg-white/90 hover:bg-white">
+                          <MoreVertical className="h-4 w-4 text-slate-600" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem onClick={() => handleEdit(record)} className="cursor-pointer">
+                          <Pencil className="mr-2 h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-red-600 focus:bg-red-50 cursor-pointer"
+                          onClick={() => { setRecordToDelete(record.id); setDeleteDialogOpen(true); }}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  {/* Attachment badge */}
+                  {record.uploaded_file_url && (
+                    <div className="absolute top-2 left-2">
+                      <Badge className="bg-white/90 text-slate-700 text-[10px] shadow-sm hover:bg-white">
+                        <FileText className="h-3 w-3 mr-1" /> PDF
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bottom: Details */}
+                <CardContent className="p-4 flex-1 flex flex-col gap-3">
+                  <div className="flex items-start justify-between">
                     <div>
-                      <div className="flex items-center gap-2">
-                        <CardTitle className="text-xl font-bold text-slate-800 capitalize">{record.type}</CardTitle>
-                        {record.uploaded_file_url && <Badge variant="outline" className="text-[10px] uppercase">Attachment</Badge>}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-1">
+                      <h3 className="font-bold text-slate-800 capitalize text-sm">{record.type}</h3>
+                      <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
                         <Clock className="h-3 w-3" />
-                        {date ? new Date(date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'No date set'}
+                        {date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No date'}
                       </div>
+                    </div>
+                    <div className={`p-1.5 rounded-lg ${theme.bg} ${theme.color}`}>
+                      {theme.icon}
                     </div>
                   </div>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-9 w-9 p-0 rounded-full hover:bg-slate-100">
-                        <MoreVertical className="h-5 w-5 text-slate-400" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem onClick={() => handleEdit(record)} className="cursor-pointer">
-                        <Pencil className="mr-2 h-4 w-4" /> Edit Record
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-red-600 focus:bg-red-50 cursor-pointer"
-                        onClick={() => { setRecordToDelete(record.id); setDeleteDialogOpen(true); }}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </CardHeader>
-
-                <CardContent className="pt-2 pb-6">
-                  {renderDetails(record)}
+                  <div className="flex-1">
+                    {renderDetails(record)}
+                  </div>
 
                   {record.uploaded_file_url && (
-                    <div className="mt-6">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setViewingDocument(record.uploaded_file_url!)}
-                        className="w-full md:w-auto bg-slate-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                      >
-                        <ExternalLink className="mr-2 h-3.5 w-3.5" />
-                        Quick View Document
-                      </Button>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setViewingDocument(record.uploaded_file_url!)}
+                      className="w-full text-xs mt-auto h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    >
+                      View Document
+                    </Button>
                   )}
                 </CardContent>
               </Card>
-            )
+            );
           })
         ) : (
-          <div className="text-center py-20 border-2 border-dashed rounded-3xl border-slate-200">
+          <div className="col-span-full text-center py-20 border-2 border-dashed rounded-3xl border-slate-200">
             <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
               <Clipboard className="h-8 w-8 text-slate-300" />
             </div>
@@ -319,11 +347,6 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
               <FileText className="h-5 w-5 text-blue-500" />
               Document Viewer
             </DialogTitle>
-            {/* <Button size="sm" asChild>
-              <a href={viewingDocument!} target="_blank" rel="noopener noreferrer">
-                Open in Full Tab
-              </a>
-            </Button> */}
           </DialogHeader>
 
           <div className="flex-1 bg-slate-900 flex items-center justify-center overflow-hidden relative">
