@@ -4,9 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, X } from 'lucide-react';
+
 
 interface EditRecordFormProps {
   isOpen: boolean;
@@ -40,82 +39,32 @@ export default function EditRecordForm({ isOpen, onClose, record, onUpdate }: Ed
     const { name, value } = e.target;
     setFormData(prev => prev ? { ...prev, details: { ...prev.details, [name]: value } } : null);
   };
-  const handleTestChange = (index: number, field: string, value: string) => {
-    setFormData(prev => {
-      if (!prev) return null;
-      const updatedTests = [...prev.details.tests];
-      updatedTests[index] = { ...updatedTests[index], [field]: value };
-      return { ...prev, details: { ...prev.details, tests: updatedTests } };
-    });
-  };
-  const addTest = () => {
-    setFormData(prev => {
-      if (!prev) return null;
-      const updatedTests = [...(prev.details.tests || []), { parameter: '', value: '', result: '' }];
-      return { ...prev, details: { ...prev.details, tests: updatedTests } };
-    });
-  };
-  const removeTest = (index: number) => {
-    setFormData(prev => {
-      if (!prev) return null;
-      const updatedTests = prev.details.tests.filter((_: any, i: number) => i !== index);
-      return { ...prev, details: { ...prev.details, tests: updatedTests } };
-    });
-  };
+
 
   if (!formData) return null;
   const renderFormFields = () => {
     switch (formData.type.toLowerCase()) {
-      case 'test':
+      case 'lab_report':
         return (
           <>
-            {formData.details.tests && formData.details.tests.map((test: any, index: number) => (
-              <div key={index} className="space-y-4 p-4 bg-blue-50 rounded-lg mb-4">
-                <div className="flex justify-between items-center">
-                  <Label className="text-lg font-semibold text-blue-600">Test {index + 1}</Label>
-                  {index > 0 && (
-                    <Button variant="ghost" size="sm" onClick={() => removeTest(index)}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor={`parameter-${index}`}>Test Parameter</Label>
-                  <Input
-                    id={`parameter-${index}`}
-                    value={test.parameter || ''}
-                    onChange={(e) => handleTestChange(index, 'parameter', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor={`value-${index}`}>Test Value</Label>
-                  <Input
-                    id={`value-${index}`}
-                    value={test.value || ''}
-                    onChange={(e) => handleTestChange(index, 'value', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor={`result-${index}`}>Result</Label>
-                  <Select
-                    value={test.result || ''}
-                    onValueChange={(value) => handleTestChange(index, 'result', value)}
-                  >
-                    <SelectTrigger id={`result-${index}`}>
-                      <SelectValue placeholder="Select result" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="normal">Normal</SelectItem>
-                      <SelectItem value="Increased">Increased</SelectItem>
-                      <SelectItem value="Decreased">Decreased</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            ))}
-            <Button type="button" onClick={addTest} className="mt-4 bg-blue-600 text-white hover:bg-blue-700">
-              <Plus className="mr-2 h-4 w-4" /> Add Another Test
-            </Button>
+            <div className="space-y-2">
+              <Label htmlFor="labName">Lab Name</Label>
+              <Input
+                id="labName"
+                name="labName"
+                value={formData.details.labName || ''}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes (optional)</Label>
+              <Textarea
+                id="notes"
+                name="notes"
+                value={formData.details.notes || ''}
+                onChange={handleInputChange}
+              />
+            </div>
           </>
         );
 

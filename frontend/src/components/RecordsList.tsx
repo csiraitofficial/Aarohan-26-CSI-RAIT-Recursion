@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Calendar, FileText, MoreVertical, Pencil, Stethoscope,
-  Trash2, Clock, User, Clipboard
+  Trash2, Clock, User, Clipboard, FlaskConical
 } from 'lucide-react';
 import { getAuth } from "firebase/auth";
 import {
@@ -138,7 +138,7 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
   const getRecordTheme = (type: string) => {
     const t = type.toLowerCase();
     switch (t) {
-      case 'test': return { icon: <FileText className="h-5 w-5" />, color: "text-amber-600", bg: "bg-amber-50", stripe: "bg-amber-500", accent: "bg-amber-100" };
+      case 'lab_report': return { icon: <FlaskConical className="h-5 w-5" />, color: "text-amber-600", bg: "bg-amber-50", stripe: "bg-amber-500", accent: "bg-amber-100" };
       case 'consultation': return { icon: <Stethoscope className="h-5 w-5" />, color: "text-blue-600", bg: "bg-blue-50", stripe: "bg-blue-500", accent: "bg-blue-100" };
       case 'surgery': return { icon: <Calendar className="h-5 w-5" />, color: "text-rose-600", bg: "bg-rose-50", stripe: "bg-rose-500", accent: "bg-rose-100" };
       default: return { icon: <Clipboard className="h-5 w-5" />, color: "text-slate-600", bg: "bg-slate-50", stripe: "bg-slate-400", accent: "bg-slate-100" };
@@ -164,7 +164,7 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
     return items;
   };
 
-  const renderTestDetails = (details: any) => (
+  const renderLabReportDetails = (details: any) => (
     <div className="space-y-1.5">
       {details.tests?.slice(0, 3).map((test: any, index: number) => (
         <div key={index} className="flex justify-between items-center text-xs">
@@ -175,7 +175,7 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
         </div>
       ))}
       {details.tests?.length > 3 && (
-        <p className="text-[10px] text-slate-400">+{details.tests.length - 3} more tests</p>
+        <p className="text-[10px] text-slate-400">+{details.tests.length - 3} more</p>
       )}
     </div>
   );
@@ -203,7 +203,7 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
   const renderDetails = (record: Record) => {
     const type = record.type.toLowerCase();
     switch (type) {
-      case 'test': return renderTestDetails(record.details);
+      case 'lab_report': return renderLabReportDetails(record.details);
       case 'consultation': return renderConsultationDetails(record.details);
       case 'surgery': return renderSurgeryDetails(record.details);
       default:
@@ -216,7 +216,7 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
   };
 
   return (
-    <div className="w-full px-4 py-8 space-y-8">
+    <div className="w-full px-2 sm:px-4 py-6 sm:py-8 space-y-6 sm:space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">Medical Records</h2>
