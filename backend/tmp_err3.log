@@ -1,0 +1,6 @@
+Error updating user profile: {
+  code: 'PGRST204',
+  details: null,
+  hint: null,
+  message: "Could not find the 'allergies' column of 'users' in the schema cache"
+}

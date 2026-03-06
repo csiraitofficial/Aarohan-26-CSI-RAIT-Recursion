@@ -1,0 +1,33 @@
+Scaler model loaded.
+Scaler model input names: [ 'input' ]
+Prediction model loaded.
+Prediction model input names: [ 'input' ]
+Backend working directory: C:\Users\rajem\Curo\Curo-main\backend
+Registering medicine reminder routes
+Registered routes:
+POST /api/auth/register
+PUT /api/users/update-fcm-token
+POST /api/auth/google
+GET /api/maps/nearby-hospitals
+GET /api/maps/nearby-lab
+GET /api/maps/nearby-doctor
+GET /api/maps/nearby-doctor-type
+GET /api/maps/nearby-pharmacy
+POST /api/health-records
+GET /api/health-records
+PUT /api/health-records/:id
+DELETE /api/health-records/:id
+POST /api/medi-chat
+POST /api/medicine-reminder
+GET /api/medicine-reminder
+PUT /api/medicine-reminder/:id
+DELETE /api/medicine-reminder/:id
+GET /api/medicine-search/
+GET /api/user-profile
+POST /api/update-profile
+GET /api/fetch-user
+GET /api/protected
+GET /api/features-status
+Server running on port 3019
+Firebase Admin initialized successfully.
+Firebase Admin initialized successfully.
