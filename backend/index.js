@@ -506,11 +506,18 @@ app.post(
   upload.single("file"), // Multer handles file upload
   async (req, res) => {
     try {
-      const { type, details } = req.body; // req.body fields are populated here
+      const { type, details } = req.body;
       const { uid } = req.user;
       const file = req.file;
 
+      console.log("=== HEALTH RECORD UPLOAD DEBUG ===");
+      console.log("1. Request body - type:", type);
+      console.log("2. Request body - details:", details ? details.substring(0, 100) + "..." : "MISSING");
+      console.log("3. File attached:", file ? `YES (${file.originalname}, ${file.size} bytes, ${file.mimetype})` : "NO");
+      console.log("4. User UID:", uid);
+
       if (!type || !details) {
+        console.log("ERROR: Missing type or details");
         return res
           .status(400)
           .json({ error: "Missing required fields: type or details" });
@@ -518,8 +525,10 @@ app.post(
 
       let parsedDetails;
       try {
-        parsedDetails = JSON.parse(details); // Parse `details` as JSON
+        parsedDetails = JSON.parse(details);
+        console.log("5. Details parsed successfully");
       } catch (error) {
+        console.log("ERROR: Invalid JSON in details:", error.message);
         return res.status(400).json({ error: "Invalid JSON in details field" });
       }
 
@@ -530,6 +539,8 @@ app.post(
         .eq("uid", uid)
         .single();
 
+      console.log("6. User lookup:", user ? `Found (id: ${user.id})` : "NOT FOUND", userError ? `Error: ${userError.message}` : "");
+
       if (userError || !user) {
         return res.status(404).json({ error: "User not found" });
       }
@@ -538,41 +549,87 @@ app.post(
 
       // If a file is uploaded, upload it to Supabase storage
       if (file) {
+        console.log("7. Starting file upload to Supabase Storage...");
         const fileExt = path.extname(file.originalname);
         const fileName = `${Date.now()}-${file.originalname}`;
-        const filePath = `health-records/${fileName}`;
+        const filePath = `${fileName}`;
+
+        console.log("   - fileName:", fileName);
+        console.log("   - filePath:", filePath);
+        console.log("   - bucket: health_records");
+        console.log("   - temp file path:", file.path);
+        console.log("   - temp file exists:", fs.existsSync(file.path));
+
+        const fileBuffer = fs.readFileSync(file.path);
+        console.log("   - buffer size:", fileBuffer.length, "bytes");
 
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("health-records")
-          .upload(filePath, fs.createReadStream(file.path), {
+          .from("health_records")
+          .upload(filePath, fileBuffer, {
             contentType: file.mimetype,
-            duplex: "half",
           });
 
+        // Clean up the temp file created by multer
+        fs.unlink(file.path, (err) => {
+          if (err) console.error("Failed to clean up temp file:", err);
+        });
+
         if (uploadError) {
-          console.error("Supabase upload error:", uploadError);
-          return res.status(500).json({ error: "Failed to upload file" });
+          console.error("8. SUPABASE STORAGE UPLOAD FAILED!");
+          console.error("   - Error message:", uploadError.message);
+          console.error("   - Error statusCode:", uploadError.statusCode);
+          console.error("   - Full error:", JSON.stringify(uploadError, null, 2));
+          return res.status(500).json({
+            error: "Failed to upload file",
+            details: uploadError.message || "Unknown storage error"
+          });
         }
 
-        fileUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/health-records/health-records/${fileName}`;
+        console.log("8. File uploaded successfully:", JSON.stringify(uploadData));
+
+        // List buckets for debugging
+        const { data: allBuckets } = await supabase.storage.listBuckets();
+        console.log("   - Available buckets:", allBuckets?.map(b => `${b.name} (public: ${b.public})`));
+
+        // Use signed URL (works for both public and private buckets)
+        const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+          .from("health_records")
+          .createSignedUrl(filePath, 60 * 60 * 24 * 365); // 1 year expiry
+
+        if (signedUrlError) {
+          console.error("   - Signed URL error:", signedUrlError.message);
+          // Fallback to public URL
+          const { data: publicUrlData } = supabase.storage
+            .from("health_records")
+            .getPublicUrl(filePath);
+          fileUrl = publicUrlData.publicUrl;
+        } else {
+          fileUrl = signedUrlData.signedUrl;
+        }
+        console.log("   - File URL:", fileUrl);
+      } else {
+        console.log("7. No file attached, skipping upload");
       }
 
       // Insert the record into Supabase
+      console.log("9. Inserting record into health_records table...");
       const { data, error } = await supabase.from("health_records").insert({
         user_id: user.id,
         type,
-        details: parsedDetails, // Use parsed JSON object
+        details: parsedDetails,
         uploaded_file_url: fileUrl,
       });
-      console.log(parsedDetails);
+
       if (error) {
-        console.error("Supabase insert error:", error);
+        console.error("10. SUPABASE INSERT FAILED:", error.message, error);
         return res.status(500).json({ error: "Failed to insert record" });
       }
 
+      console.log("10. Record inserted successfully!");
+      console.log("=== END DEBUG ===");
       res.status(201).json({ message: "Record added successfully", data });
     } catch (error) {
-      console.error(error);
+      console.error("UNEXPECTED ERROR in health-records POST:", error);
       res.status(500).json({ error: error.message });
     }
   },

@@ -115,7 +115,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
           <FileText className="mr-2 h-4 w-4" />
           Health Records
         </Button>
-        {/* <Button
+        <Button
           variant={activeTab === "appointments" ? "default" : "ghost"}
           className={getButtonClass("appointments")}
           onClick={() => {
@@ -125,8 +125,8 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
         >
           <Calendar className="mr-2 h-4 w-4" />
           Appointments
-        </Button> */}
-        {/* <Button
+        </Button>
+        <Button
           variant={activeTab === "medichat" ? "default" : "ghost"}
           className={getButtonClass("medichat")}
           onClick={() => {
@@ -136,7 +136,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
         >
           <MessageSquare className="mr-2 h-4 w-4" />
           MediChat - AI Doctor
-        </Button> */}
+        </Button>
         <Button
           variant={activeTab === "Medicine Reminder" ? "default" : "ghost"}
           className={getButtonClass("Medicine Reminder")}
