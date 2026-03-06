@@ -48,14 +48,6 @@ export default function EditRecordForm({ isOpen, onClose, record, onUpdate }: Ed
       return { ...prev, details: { ...prev.details, tests: updatedTests } };
     });
   };
-  const handleMedicineChange = (index: number, field: string, value: string) => {
-    setFormData(prev => {
-      if (!prev) return null;
-      const updatedMedicines = [...prev.details.medicines];
-      updatedMedicines[index] = { ...updatedMedicines[index], [field]: value };
-      return { ...prev, details: { ...prev.details, medicines: updatedMedicines } };
-    });
-  };
   const addTest = () => {
     setFormData(prev => {
       if (!prev) return null;
@@ -70,20 +62,7 @@ export default function EditRecordForm({ isOpen, onClose, record, onUpdate }: Ed
       return { ...prev, details: { ...prev.details, tests: updatedTests } };
     });
   };
-  const addMedicine = () => {
-    setFormData(prev => {
-      if (!prev) return null;
-      const updatedMedicines = [...(prev.details.medicines || []), { name: '', dosage: '', frequency: '', duration: '' }];
-      return { ...prev, details: { ...prev.details, medicines: updatedMedicines } };
-    });
-  };
-  const removeMedicine = (index: number) => {
-    setFormData(prev => {
-      if (!prev) return null;
-      const updatedMedicines = prev.details.medicines.filter((_: any, i: number) => i !== index);
-      return { ...prev, details: { ...prev.details, medicines: updatedMedicines } };
-    });
-  };
+
   if (!formData) return null;
   const renderFormFields = () => {
     switch (formData.type.toLowerCase()) {
@@ -139,76 +118,7 @@ export default function EditRecordForm({ isOpen, onClose, record, onUpdate }: Ed
             </Button>
           </>
         );
-      case 'prescription':
-        return (
-          <>
-            {formData.details.medicines && formData.details.medicines.map((medicine: any, index: number) => (
-              <div key={index} className="space-y-4 p-4 bg-blue-50 rounded-lg mb-4">
-                <div className="flex justify-between items-center">
-                  <Label className="text-lg font-semibold text-blue-600">Medicine {index + 1}</Label>
-                  {index > 0 && (
-                    <Button variant="ghost" size="sm" onClick={() => removeMedicine(index)}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor={`medicineName-${index}`}>Medicine Name</Label>
-                  <Input
-                    id={`medicineName-${index}`}
-                    value={medicine.name || ''}
-                    onChange={(e) => handleMedicineChange(index, 'name', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor={`dosage-${index}`}>Dosage</Label>
-                  <Input
-                    id={`dosage-${index}`}
-                    value={medicine.dosage || ''}
-                    onChange={(e) => handleMedicineChange(index, 'dosage', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor={`frequency-${index}`}>Frequency</Label>
-                  <Input
-                    id={`frequency-${index}`}
-                    value={medicine.frequency || ''}
-                    onChange={(e) => handleMedicineChange(index, 'frequency', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor={`duration-${index}`}>Duration</Label>
-                  <Input
-                    id={`duration-${index}`}
-                    value={medicine.duration || ''}
-                    onChange={(e) => handleMedicineChange(index, 'duration', e.target.value)}
-                  />
-                </div>
-              </div>
-            ))}
-            <Button type="button" onClick={addMedicine} className="mt-4 bg-blue-600 text-white hover:bg-blue-700">
-              <Plus className="mr-2 h-4 w-4" /> Add Another Medicine
-            </Button>
-            <div className="space-y-2 mt-4">
-              <Label htmlFor="doctorName">Doctor's Name</Label>
-              <Input
-                id="doctorName"
-                name="doctorName"
-                value={formData.details.doctorName || ''}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="diagnosis">Diagnosis</Label>
-              <Textarea
-                id="diagnosis"
-                name="diagnosis"
-                value={formData.details.diagnosis || ''}
-                onChange={handleInputChange}
-              />
-            </div>
-          </>
-        );
+
       case 'consultation':
         return (
           <>

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Calendar, FileText, MoreVertical, Pencil, Stethoscope,
-  Syringe, Trash2, ExternalLink, Clock, User, Clipboard, X
+  Trash2, ExternalLink, Clock, User, Clipboard
 } from 'lucide-react';
 import { getAuth } from "firebase/auth";
 import {
@@ -69,7 +69,6 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
         const details = record.details;
         return details.consultationDate ||
           details.surgeryDate ||
-          (details.medicines?.[0]?.startDate) ||
           new Date().toISOString();
       };
       return new Date(getDate(b)).getTime() - new Date(getDate(a)).getTime();
@@ -92,7 +91,7 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
         setRecordToDelete(null);
       }
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error deleting record:", error);
     }
   };
 
@@ -136,12 +135,12 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
   };
 
   const getRecordTheme = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'test': return { icon: <FileText className="h-5 w-5" />, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200", stripe: "bg-amber-500" };
-      case 'prescription': return { icon: <Syringe className="h-5 w-5" />, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200", stripe: "bg-emerald-500" };
-      case 'consultation': return { icon: <Stethoscope className="h-5 w-5" />, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200", stripe: "bg-blue-500" };
-      case 'surgery': return { icon: <Calendar className="h-5 w-5" />, color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-200", stripe: "bg-rose-500" };
-      default: return { icon: <Clipboard className="h-5 w-5" />, color: "text-slate-600", bg: "bg-slate-50", border: "border-slate-200", stripe: "bg-slate-500" };
+    const t = type.toLowerCase();
+    switch (t) {
+      case 'test': return { icon: <FileText className="h-5 w-5" />, color: "text-amber-600", bg: "bg-amber-50", stripe: "bg-amber-500" };
+      case 'consultation': return { icon: <Stethoscope className="h-5 w-5" />, color: "text-blue-600", bg: "bg-blue-50", stripe: "bg-blue-500" };
+      case 'surgery': return { icon: <Calendar className="h-5 w-5" />, color: "text-rose-600", bg: "bg-rose-50", stripe: "bg-rose-500" };
+      default: return { icon: <Clipboard className="h-5 w-5" />, color: "text-slate-600", bg: "bg-slate-50", stripe: "bg-slate-400" };
     }
   };
 
@@ -180,28 +179,6 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
     </div>
   );
 
-  const renderPrescriptionDetails = (details: any) => (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-4 text-sm text-slate-600 bg-white p-3 rounded-lg border border-dashed">
-        <div className="flex items-center gap-1.5"><User className="h-4 w-4" /> <strong>Dr.</strong> {details.doctorName}</div>
-        {details.diagnosis && <div className="flex items-center gap-1.5"><Clipboard className="h-4 w-4" /> {details.diagnosis}</div>}
-      </div>
-      <div className="grid gap-3">
-        {details.medicines?.map((med: any, index: number) => (
-          <div key={index} className="flex items-start justify-between p-3 bg-emerald-50/30 rounded-xl border border-emerald-100/50">
-            <div>
-              <p className="font-bold text-emerald-900">{med.name}</p>
-              <p className="text-xs text-emerald-700/70">{med.frequency} • {med.duration} days</p>
-            </div>
-            <div className="text-right text-xs font-medium text-emerald-800">
-              Starts: {med.startDate}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
   const renderConsultationDetails = (details: any) => (
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-slate-700 font-medium">
@@ -223,12 +200,20 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
   );
 
   const renderDetails = (record: Record) => {
-    switch (record.type.toLowerCase()) {
+    const type = record.type.toLowerCase();
+    switch (type) {
       case 'test': return renderTestDetails(record.details);
-      case 'prescription': return renderPrescriptionDetails(record.details);
       case 'consultation': return renderConsultationDetails(record.details);
       case 'surgery': return renderSurgeryDetails(record.details);
-      default: return <pre className="text-xs bg-slate-100 p-2 rounded">{JSON.stringify(record.details, null, 2)}</pre>;
+      default:
+        return (
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <h4 className="text-xs font-bold uppercase text-slate-400 mb-2">Note</h4>
+            <p className="text-slate-700 text-sm leading-relaxed">
+              {record.details.notes || "No additional information provided."}
+            </p>
+          </div>
+        );
     }
   };
 
@@ -248,7 +233,7 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
         {currentRecords.length > 0 ? (
           currentRecords.map((record) => {
             const theme = getRecordTheme(record.type);
-            const date = record.details.consultationDate || record.details.surgeryDate || record.details.medicines?.[0]?.startDate;
+            const date = record.details.consultationDate || record.details.surgeryDate;
 
             return (
               <Card key={record.id} className="group overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 ring-1 ring-slate-200">
@@ -330,28 +315,15 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
           onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader className="p-4 border-b bg-white flex flex-row items-center justify-between">
-            <div className="flex flex-col">
-              <DialogTitle className="text-lg font-semibold flex items-center gap-2">
-                {/* <FileText className="h-5 w-5 text-blue-500" /> */}
-                Document Viewer
-              </DialogTitle>
-              <span className="text-xs text-slate-400 truncate max-w-[200px] md:max-w-md">
-                {/* {viewingDocument} */}
-              </span>
-            </div>
-            <div className="flex gap-2">
-              {/* <Button variant="outline" size="sm" asChild className="hidden md:flex">
-                <a href={viewingDocument!} download target="_blank" rel="noopener noreferrer">
-                  Download
-                </a>
-              </Button> */}
-              {/* <Button size="sm" asChild>
-                <a href={viewingDocument!} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4 mr-1" />
-                  Full Screen
-                </a>
-              </Button> */}
-            </div>
+            <DialogTitle className="text-lg font-semibold flex items-center gap-2">
+              <FileText className="h-5 w-5 text-blue-500" />
+              Document Viewer
+            </DialogTitle>
+            {/* <Button size="sm" asChild>
+              <a href={viewingDocument!} target="_blank" rel="noopener noreferrer">
+                Open in Full Tab
+              </a>
+            </Button> */}
           </DialogHeader>
 
           <div className="flex-1 bg-slate-900 flex items-center justify-center overflow-hidden relative">
@@ -364,10 +336,10 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
                 >
                   <div className="flex flex-col items-center justify-center text-white p-6 text-center">
                     <FileText className="h-12 w-12 mb-4 text-slate-500" />
-                    <p className="mb-4">This browser doesn't support inline PDFs.</p>
+                    <p className="mb-4">Inline PDF viewing is not supported in this browser.</p>
                     <Button asChild variant="secondary">
                       <a href={viewingDocument} target="_blank" rel="noopener noreferrer">
-                        Click here to view the PDF
+                        Open Document
                       </a>
                     </Button>
                   </div>
