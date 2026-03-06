@@ -2,19 +2,20 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Suspense, lazy } from "react";
 
 // Eager load essential pages
-import HealixLandingPage from "./pages/landing";
-import AuthPage from "./pages/signin";
+import HealixLandingPage from "@/pages/landing";
+import AuthPage from "@/pages/signin";
 
 // Lazy load other pages for better performance
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const HealthRecords = lazy(() => import("./pages/HealthRecords"));
-const MediChatPage = lazy(() => import("./pages/Medichat"));
-const MedicineReminderPage = lazy(() => import("./pages/Reminder"));
-const MedicinePricePage = lazy(() => import("./pages/MedicinePrice"));
-const NearbyServicesPage = lazy(() => import("./pages/Findservices"));
-const Appointments = lazy(() => import("./pages/Appointments"));
-const PremiumPredictor = lazy(() => import("./pages/PremiumPredictor"));
-const UserProfilePage = lazy(() => import("./pages/UserProfile"));
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const HealthRecords = lazy(() => import("@/pages/HealthRecords"));
+const MediChatPage = lazy(() => import("@/pages/Medichat"));
+const MedicineReminderPage = lazy(() => import("@/pages/Reminder"));
+const MedicinePricePage = lazy(() => import("@/pages/MedicinePrice"));
+const NearbyServicesPage = lazy(() => import("@/pages/Findservices"));
+const Appointments = lazy(() => import("@/pages/Appointments"));
+const PremiumPredictor = lazy(() => import("@/pages/PremiumPredictor"));
+const UserProfilePage = lazy(() => import("@/pages/UserProfile"));
+const GovtPlans = lazy(() => import("@/pages/GovtPlans"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -49,6 +50,7 @@ function App() {
               element={<PremiumPredictor />}
             />
             <Route path="/user-profile/:uid" element={<UserProfilePage />} />
+            <Route path="/govt-plans/:uid" element={<GovtPlans />} />
           </Routes>
         </Suspense>
       </Router>

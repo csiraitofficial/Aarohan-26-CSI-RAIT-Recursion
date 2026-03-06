@@ -1,95 +1,103 @@
-// router.js (or your file name)
 import express from 'express';
-import bodyParser from 'body-parser';
 import * as ort from 'onnxruntime-node';
 import { authenticateUser } from '../middleware/auth.js';
-
+import supabase from '../supabase.js';
 
 const router = express.Router();
 
 let scalerSession;
 let modelSession;
 
-// Asynchronous function to load the ONNX model sessions.
+// ── Model Initialisation ─────────────────────────────────────────────────────
+
 async function initializeModels() {
   try {
-    // Load the scaler ONNX model (for preprocessing)
     scalerSession = await ort.InferenceSession.create('./MachineLearningModel/scaler.onnx');
-    console.log('Scaler model loaded.');
-    console.log('Scaler model input names:', scalerSession.inputNames);
+    console.log('[PremiumPredictor] Scaler model loaded. Inputs:', scalerSession.inputNames);
 
-    // Load the prediction (LightGBM) ONNX model
     modelSession = await ort.InferenceSession.create('./MachineLearningModel/model.onnx');
-    console.log('Prediction model loaded.');
-    console.log('Prediction model input names:', modelSession.inputNames);
+    console.log('[PremiumPredictor] Prediction model loaded. Inputs:', modelSession.inputNames);
   } catch (error) {
-    console.error('Error loading ONNX models:', error);
+    console.error('[PremiumPredictor] Error loading ONNX models:', error);
   }
 }
 
-// Use top-level await if your Node version supports it.
 await initializeModels();
+
+// ── Helper: derive confidence heuristic ──────────────────────────────────────
+// Since LightGBM ONNX doesn't expose native prediction intervals, we derive
+// a confidence proxy based on number of risk flags present.
+// Fewer flags → model is more confident (closer to baseline population).
+function deriveConfidence(features) {
+  // features: [age, diabetes, bp, transplant, chronic, height, weight, allergies, cancer, surgeries]
+  const riskFlags = [features[1], features[2], features[3], features[4], features[7], features[8]];
+  const surgeries = features[9];
+  const totalRisk = riskFlags.reduce((sum, f) => sum + (f ? 1 : 0), 0) + Math.min(surgeries, 4);
+  // Confidence ranges from 0.70 (max risk) to 0.96 (no risk)
+  const maxRisk = 10;
+  const confidence = 0.96 - (totalRisk / maxRisk) * 0.26;
+  return Math.round(confidence * 100) / 100;
+}
+
+// ── POST /predict ─────────────────────────────────────────────────────────────
 
 router.post('/predict', authenticateUser, async (req, res) => {
   try {
-    // Expect the client to send a JSON payload like:
-    // { "features": [Age, Diabetes, BloodPressureProblems, AnyTransplants, AnyChronicDiseases,
-    //                Height, Weight, KnownAllergies, HistoryOfCancerInFamily, NumberOfMajorSurgeries] }
     const features = req.body.features;
 
-    // Validate the input – it should be an array of 10 numeric values.
     if (!features || !Array.isArray(features) || features.length !== 10) {
-        console.log("the features are:",features);
-      return res.status(400).json({ error: 'Please provide an array of 10 numeric features.' });
+      return res.status(400).json({
+        error: 'Please provide an array of exactly 10 numeric features.',
+        expected: '[age, diabetes, bloodPressure, transplant, chronicDisease, height, weight, allergies, cancerHistory, surgeries]'
+      });
     }
 
-    // Convert the feature array to a Float32Array and create a tensor of shape [1, 10].
-    const inputTensor = new ort.Tensor('float32', Float32Array.from(features), [1, 10]);
+    // Ensure all values are numbers
+    const numericFeatures = features.map(Number);
+    if (numericFeatures.some(isNaN)) {
+      return res.status(400).json({ error: 'All feature values must be numeric.' });
+    }
 
-    // Run the scaler ONNX model for preprocessing.
-    // Adjust the input name ('input') if your ONNX model uses a different name.
-    const scalerFeeds = { input: inputTensor };
-    console.log(scalerFeeds);
-    const scalerResults = await scalerSession.run(scalerFeeds);
+    if (!scalerSession || !modelSession) {
+      return res.status(503).json({ error: 'ML models are not initialized yet. Please retry in a moment.' });
+    }
 
-    // Assume the scaler output is stored under the key "output" (adjust if needed).
+    // ── Inference ──
+    const inputTensor = new ort.Tensor('float32', Float32Array.from(numericFeatures), [1, 10]);
+
+    // Scale features
+    const scalerResults = await scalerSession.run({ input: inputTensor });
     const processedInput = scalerResults.variable;
-    console.log("Scaler output (raw):", processedInput);
 
-    // Deep-clone the tensor’s data by copying each element.
+    // Deep-clone tensor data to avoid stale buffer issues
     const clonedData = new Float32Array(processedInput.cpuData.length);
     for (let i = 0; i < processedInput.cpuData.length; i++) {
-    clonedData[i] = processedInput.cpuData[i];
+      clonedData[i] = processedInput.cpuData[i];
     }
+    const processedInputTensor = new ort.Tensor(processedInput.type, clonedData, [1, 10]);
 
-    // Now create a fresh tensor.
-    const processedInputTensor = new ort.Tensor(
-    processedInput.type,
-    clonedData,
-    [1,10]
-    );
-
-// Verify it is an instance of ort.Tensor.
-console.log("Processed tensor for prediction:", processedInputTensor);
-console.log("Is instance of ort.Tensor?", processedInputTensor instanceof ort.Tensor);
-    // Run the prediction model using the processed input.
-    const modelFeeds = { input: processedInput };
-    const modelResults = await modelSession.run(modelFeeds);
-
-    // Retrieve the prediction from the output (adjust the key if necessary).
-    let prediction;
+    // Predict
+    const modelResults = await modelSession.run({ input: processedInputTensor });
+    let rawPrediction;
     if (modelResults.prediction) {
-      prediction = modelResults.prediction.data[0];
+      rawPrediction = modelResults.prediction.data[0];
     } else {
-      // If the key is unknown, simply take the first output.
-      prediction = modelResults[Object.keys(modelResults)[0]].data[0];
+      rawPrediction = modelResults[Object.keys(modelResults)[0]].data[0];
     }
 
-    // Respond with the prediction.
-    console.log('Prediction:', prediction);
-    res.json({ prediction: Number(prediction) });
+    const prediction = Math.max(0, Number(rawPrediction));
+    const confidence = deriveConfidence(numericFeatures);
+
+    console.log(`[PremiumPredictor] Prediction: ₹${prediction.toFixed(2)}  Confidence: ${confidence}`);
+
+    return res.json({
+      prediction: Math.round(prediction * 100) / 100,
+      currency: 'INR',
+      confidence,
+    });
+
   } catch (error) {
-    console.error('Error during inference:', error);
+    console.error('[PremiumPredictor] Inference error:', error);
     res.status(500).json({ error: error.message });
   }
 });

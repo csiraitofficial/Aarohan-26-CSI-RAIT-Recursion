@@ -1,16 +1,17 @@
 
-import { MapPin, FileText, Calendar, Settings, LogOut, Activity, MessageSquare, AlarmClock, PillBottle, BadgePercentIcon } from 'lucide-react';
+import { MapPin, FileText, Settings, LogOut, Activity, AlarmClock, PillBottle, BadgePercentIcon } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { toast } from "react-hot-toast";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useNavigate } from 'react-router-dom';
- 
+import ashokaLogo from "@/assets/ashoka.png";
+
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
 }
- 
+
 export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   const sessionUser = sessionStorage.getItem("authUser");
   let user: { uid?: string } | null = null;
@@ -31,7 +32,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
     }
     navigate(pathBuilder(user.uid));
   };
- 
+
   const handleLogout = () => {
     toast((t) => (
       <div className="flex flex-col space-y-2">
@@ -60,15 +61,15 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
       </div>
     ), { duration: Infinity });
   };
- 
+
   const getButtonClass = (tabName: string) => {
     const isActive = activeTab === tabName;
     return `w-full justify-start ${isActive
-        ? "bg-blue-500 !text-white hover:bg-blue-600"
-        : "bg-transparent !text-gray-600 hover:!text-blue-500 hover:bg-blue-50"
+      ? "bg-blue-500 !text-white hover:bg-blue-600"
+      : "bg-transparent !text-gray-600 hover:!text-blue-500 hover:bg-blue-50"
       }`;
   };
- 
+
   return (
     <aside className="w-64 bg-white border-r border-gray-200 p-4 flex flex-col">
       <div className="flex items-center space-x-2 mb-8">
@@ -79,7 +80,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
         />
         <span className="text-2xl font-bold text-blue-800">Healix</span>
       </div>
- 
+
       <nav className="space-y-2 flex-1">
         <Button
           variant={activeTab === "overview" ? "default" : "ghost"}
@@ -169,8 +170,19 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
           <BadgePercentIcon className="mr-2 h-4 w-4" />
           Premium Predictor
         </Button>
+        <Button
+          variant={activeTab === "Govt Insurance Plans" ? "default" : "ghost"}
+          className={getButtonClass("Govt Insurance Plans")}
+          onClick={() => {
+            setActiveTab("Govt Insurance Plans");
+            navigateWithUser((uid) => `/govt-plans/${uid}`);
+          }}
+        >
+          <img src={ashokaLogo} alt="Govt Insurance Plans" className="mr-2 h-4 w-4 object-contain" />
+          Govt Insurance Plans
+        </Button>
       </nav>
- 
+
       <div className="space-y-2 pt-4 border-t border-gray-200">
         <Button
           variant="ghost"

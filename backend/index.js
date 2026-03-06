@@ -19,7 +19,9 @@ import zlib from "zlib";
 import { promisify } from "util";
 import appointmentRoutes from "./routes/appointmentRoutes.js";
 import premiumPredictorRoutes from "./routes/premiumPredictorRoutes.js";
+import govtInsuranceRoutes from "./routes/govtInsuranceRoutes.js";
 const upload = multer({ dest: "uploads/" });
+
 
 const gunzip = promisify(zlib.gunzip);
 
@@ -178,6 +180,10 @@ const corsOptions = {
 // Use cors middleware with options
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// Mount routes
+app.use("/api/premium-predictor", premiumPredictorRoutes);
+app.use("/api/govt-insurance", govtInsuranceRoutes);
 
 const decodeTokenPayload = (token) => {
   const parts = token.split(".");
@@ -955,8 +961,7 @@ app.get("/api/medicine-search/", authenticateUser, async (req, res) => {
 
 app.use("/api/appointments", appointmentRoutes);
 
-//Premium Predictor Routes
-app.use("/api/premium-predictor", premiumPredictorRoutes);
+// Routes are already mounted at the top of the file
 
 app.get("/api/user-profile", authenticateUser, async (req, res) => {
   try {

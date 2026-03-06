@@ -72,3 +72,10 @@ export const USER_ENDPOINTS = {
   fetchUser: `${API_BASE_URL}/api/fetch-user`,
   updateProfile: `${API_BASE_URL}/api/update-profile`,
 };
+
+// Government insurance endpoints
+export const GOVT_INSURANCE_ENDPOINTS = {
+  assess: `${API_BASE_URL}/api/govt-insurance/assess-eligibility`,
+  history: `${API_BASE_URL}/api/govt-insurance/history`,
+  schemes: `${API_BASE_URL}/api/govt-insurance/schemes`,
+};

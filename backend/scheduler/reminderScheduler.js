@@ -58,7 +58,11 @@ cron.schedule(
           const response = await admin.messaging().send(message);
           console.log("Sent FCM notification:", response);
         } catch (sendErr) {
-          console.error("Error sending FCM:", sendErr);
+          // Prevent crash on credential mismatch or other FCM issues
+          console.warn(`[Scheduler] FCM delivery failed for ${reminder.name}: ${sendErr.message}`);
+          if (sendErr.code === 'messaging/mismatched-credential') {
+            console.warn("[Scheduler] Tip: Ensure serviceaccountKey.json matches the Firebase project in your frontend.");
+          }
         }
       }
     } catch (err) {
