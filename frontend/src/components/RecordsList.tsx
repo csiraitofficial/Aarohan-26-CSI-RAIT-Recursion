@@ -9,7 +9,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Calendar, FileText, MoreVertical, Pencil, Stethoscope, Syringe, Trash2 } from 'lucide-react';
+import {
+  Calendar, FileText, MoreVertical, Pencil, Stethoscope,
+  Syringe, Trash2, ExternalLink, Clock, User, Clipboard, X
+} from 'lucide-react';
 import { getAuth } from "firebase/auth";
 import {
   Pagination,
@@ -29,14 +32,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { HEALTH_ENDPOINTS } from "@/lib/config";
 import EditRecordForm from "./EditRecordForm";
+
 interface Record {
   id: string;
   type: string;
   details: any;
   uploaded_file_url?: string;
 }
+
 interface RecordsListProps {
   records: Record[];
   setRecords: React.Dispatch<React.SetStateAction<Record[]>>;
@@ -48,61 +59,52 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
   const [recordToDelete, setRecordToDelete] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [recordToEdit, setRecordToEdit] = useState<Record | null>(null);
+  const [viewingDocument, setViewingDocument] = useState<string | null>(null);
+
   const recordsPerPage = 3;
+
   const sortRecordsByDate = (records: Record[]) => {
     return [...records].sort((a, b) => {
       const getDate = (record: Record) => {
         const details = record.details;
-        return details.consultationDate || 
-               details.surgeryDate || 
-               (details.medicines?.[0]?.startDate) ||
-               new Date().toISOString(); // fallback for records without dates
+        return details.consultationDate ||
+          details.surgeryDate ||
+          (details.medicines?.[0]?.startDate) ||
+          new Date().toISOString();
       };
-      
       return new Date(getDate(b)).getTime() - new Date(getDate(a)).getTime();
     });
   };
 
-  
   const handleDelete = async (recordId: string) => {
     const auth = getAuth();
     const user = auth.currentUser;
-    if (!user) {
-      console.error("No logged-in user. Please sign in first.");
-      return;
-    }
+    if (!user) return;
     try {
       const token = await user.getIdToken();
       const response = await fetch(`${HEALTH_ENDPOINTS.records}/${recordId}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
         setRecords(records.filter(record => record.id !== recordId));
         setDeleteDialogOpen(false);
         setRecordToDelete(null);
-      } else {
-        const errorResponse = await response.json();
-        console.error("Error deleting record:", errorResponse.error);
       }
     } catch (error) {
       console.error("Error:", error);
     }
   };
+
   const handleEdit = (record: Record) => {
     setRecordToEdit(record);
     setEditDialogOpen(true);
   };
+
   const handleUpdate = async (updatedRecord: Record) => {
     const auth = getAuth();
     const user = auth.currentUser;
-    
-    if (!user) {
-      console.error("No logged-in user");
-      return;
-    }
+    if (!user) return;
 
     try {
       const token = await user.getIdToken();
@@ -118,53 +120,42 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
           uploaded_file_url: updatedRecord.uploaded_file_url
         }),
       });
-      const result = await response.json();
-      console.log('Server response:', result); // 
 
       if (response.ok) {
-        setRecords(prevRecords => 
-          sortRecordsByDate(prevRecords.map(record => 
-            record.id === updatedRecord.id 
-              ? { ...updatedRecord } // Keep the existing record with updates
-              : record
+        setRecords(prevRecords =>
+          sortRecordsByDate(prevRecords.map(record =>
+            record.id === updatedRecord.id ? { ...updatedRecord } : record
           ))
         );
       }
     } catch (error) {
       console.error("Error updating record:", error);
     }
-    
     setEditDialogOpen(false);
     setRecordToEdit(null);
   };
-  const getRecordIcon = (type: string) => {
+
+  const getRecordTheme = (type: string) => {
     switch (type.toLowerCase()) {
-      case 'test':
-        return <FileText className="h-5 w-5" />;
-      case 'prescription':
-        return <Syringe className="h-5 w-5" />;
-      case 'consultation':
-        return <Stethoscope className="h-5 w-5" />;
-      case 'surgery':
-        return <Calendar className="h-5 w-5" />;
-      default:
-        return <FileText className="h-5 w-5" />;
+      case 'test': return { icon: <FileText className="h-5 w-5" />, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200", stripe: "bg-amber-500" };
+      case 'prescription': return { icon: <Syringe className="h-5 w-5" />, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200", stripe: "bg-emerald-500" };
+      case 'consultation': return { icon: <Stethoscope className="h-5 w-5" />, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200", stripe: "bg-blue-500" };
+      case 'surgery': return { icon: <Calendar className="h-5 w-5" />, color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-200", stripe: "bg-rose-500" };
+      default: return { icon: <Clipboard className="h-5 w-5" />, color: "text-slate-600", bg: "bg-slate-50", border: "border-slate-200", stripe: "bg-slate-500" };
     }
   };
-  // Pagination logic
+
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
   const currentRecords = records.slice(indexOfFirstRecord, indexOfLastRecord);
   const totalPages = Math.ceil(records.length / recordsPerPage);
+
   const renderPaginationItems = () => {
     const items = [];
     for (let i = 1; i <= totalPages; i++) {
       items.push(
-        <PaginationItem key={i}>
-          <PaginationLink
-            onClick={() => setCurrentPage(i)}
-            isActive={currentPage === i}
-          >
+        <PaginationItem key={i} className="cursor-pointer">
+          <PaginationLink onClick={() => setCurrentPage(i)} isActive={currentPage === i}>
             {i}
           </PaginationLink>
         </PaginationItem>
@@ -172,205 +163,270 @@ export default function RecordsList({ records, setRecords }: RecordsListProps) {
     }
     return items;
   };
-  const renderTestDetails = (details: any) => {
-    if (!details.tests || !Array.isArray(details.tests)) return null;
-    return (
-      <div className="space-y-4">
-        {details.tests.map((test: any, index: number) => (
-          <div key={index} className="bg-blue-50 p-4 rounded-lg">
-            <h4 className="font-semibold text-blue-700 mb-2">Test {index + 1}</h4>
-            <div className="grid gap-2">
-              <p><span className="font-medium">Parameter:</span> {test.parameter}</p>
-              <p><span className="font-medium">Value:</span> {test.value}</p>
-              <p>
-                <span className="font-medium">Result:</span>
-                <Badge 
-                  variant={test.result === 'normal' ? 'default' : 'destructive'}
-                  className="ml-2"
-                >
-                  {test.result}
-                </Badge>
-              </p>
+
+  const renderTestDetails = (details: any) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+      {details.tests?.map((test: any, index: number) => (
+        <div key={index} className="flex flex-col p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">{test.parameter}</span>
+          <div className="flex justify-between items-center">
+            <span className="text-lg font-semibold text-slate-700">{test.value}</span>
+            <Badge variant={test.result === 'normal' ? 'outline' : 'destructive'} className="capitalize">
+              {test.result}
+            </Badge>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderPrescriptionDetails = (details: any) => (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-4 text-sm text-slate-600 bg-white p-3 rounded-lg border border-dashed">
+        <div className="flex items-center gap-1.5"><User className="h-4 w-4" /> <strong>Dr.</strong> {details.doctorName}</div>
+        {details.diagnosis && <div className="flex items-center gap-1.5"><Clipboard className="h-4 w-4" /> {details.diagnosis}</div>}
+      </div>
+      <div className="grid gap-3">
+        {details.medicines?.map((med: any, index: number) => (
+          <div key={index} className="flex items-start justify-between p-3 bg-emerald-50/30 rounded-xl border border-emerald-100/50">
+            <div>
+              <p className="font-bold text-emerald-900">{med.name}</p>
+              <p className="text-xs text-emerald-700/70">{med.frequency} • {med.duration} days</p>
+            </div>
+            <div className="text-right text-xs font-medium text-emerald-800">
+              Starts: {med.startDate}
             </div>
           </div>
         ))}
       </div>
-    );
-  };
-  const renderPrescriptionDetails = (details: any) => {
-    if (!details.medicines || !Array.isArray(details.medicines)) return null;
-    return (
-      <div className="space-y-4">
-        <div className="mb-4">
-          <p><span className="font-medium">Doctor:</span> {details.doctorName}</p>
-          {details.diagnosis && (
-            <p><span className="font-medium">Diagnosis:</span> {details.diagnosis}</p>
-          )}
-        </div>
-        {details.medicines.map((medicine: any, index: number) => (
-          <div key={index} className="bg-blue-50 p-4 rounded-lg">
-            <h4 className="font-semibold text-blue-700 mb-2">Medicine {index + 1}</h4>
-            <div className="grid gap-2">
-              <p><span className="font-medium">Name:</span> {medicine.name}</p>
-              <p><span className="font-medium">Frequency:</span> {medicine.frequency}</p>
-              {medicine.timing && (
-                <p><span className="font-medium">Times per day:</span> {medicine.timing}</p>
-              )}
-              {medicine.days && medicine.days.length > 0 && (
-                <p><span className="font-medium">Days:</span> {medicine.days.join(', ')}</p>
-              )}
-              {medicine.startDate && (
-                <p><span className="font-medium">Start Date:</span> {medicine.startDate}</p>
-              )}
-              {medicine.duration && (
-                <p><span className="font-medium">Duration:</span> {medicine.duration} days</p>
-              )}
-            </div>
-          </div>
-        ))}
+    </div>
+  );
+
+  const renderConsultationDetails = (details: any) => (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 text-slate-700 font-medium">
+        <User className="h-4 w-4 text-blue-500" /> {details.doctorName}
       </div>
-    );
-  };
-  const renderConsultationDetails = (details: any) => {
-    return (
-      <div className="space-y-4">
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <div className="grid gap-2">
-            <p><span className="font-medium">Doctor:</span> {details.doctorName}</p>
-            <p><span className="font-medium">Date:</span> {details.consultationDate}</p>
-            {details.doctorNote && (
-              <div>
-                <p className="font-medium mb-1">Doctor's Note:</p>
-                <p className="bg-white p-3 rounded-md">{details.doctorNote}</p>
-              </div>
-            )}
-          </div>
-        </div>
+      <div className="p-4 bg-white rounded-xl border border-blue-100 shadow-sm italic text-slate-600 text-sm leading-relaxed">
+        "{details.doctorNote}"
       </div>
-    );
-  };
-  const renderSurgeryDetails = (details: any) => {
-    return (
-      <div className="space-y-4">
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <div className="grid gap-2">
-            <p><span className="font-medium">Date:</span> {details.surgeryDate}</p>
-            {details.surgeryDetails && (
-              <div>
-                <p className="font-medium mb-1">Surgery Details:</p>
-                <p className="bg-white p-3 rounded-md">{details.surgeryDetails}</p>
-              </div>
-            )}
-          </div>
-        </div>
+    </div>
+  );
+
+  const renderSurgeryDetails = (details: any) => (
+    <div className="space-y-3">
+      <div className="p-4 bg-rose-50/50 rounded-xl border border-rose-100">
+        <h4 className="text-xs font-bold uppercase text-rose-400 mb-2">Procedure Details</h4>
+        <p className="text-slate-700 text-sm leading-relaxed">{details.surgeryDetails}</p>
       </div>
-    );
-  };
+    </div>
+  );
+
   const renderDetails = (record: Record) => {
     switch (record.type.toLowerCase()) {
-      case 'test':
-        return renderTestDetails(record.details);
-      case 'prescription':
-        return renderPrescriptionDetails(record.details);
-      case 'consultation':
-        return renderConsultationDetails(record.details);
-      case 'surgery':
-        return renderSurgeryDetails(record.details);
-      default:
-        return <pre className="text-sm">{JSON.stringify(record.details, null, 2)}</pre>;
+      case 'test': return renderTestDetails(record.details);
+      case 'prescription': return renderPrescriptionDetails(record.details);
+      case 'consultation': return renderConsultationDetails(record.details);
+      case 'surgery': return renderSurgeryDetails(record.details);
+      default: return <pre className="text-xs bg-slate-100 p-2 rounded">{JSON.stringify(record.details, null, 2)}</pre>;
     }
   };
+
   return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-semibold mb-4 text-blue-600">Your Medical Records</h2>
-      {currentRecords.map((record) => (
-        <Card key={record.id} className="bg-white border-blue-200 hover:border-blue-400 transition-colors">
-          <CardHeader className="bg-blue-50 flex flex-row items-center justify-between space-y-0">
-            <div className="flex items-center gap-3">
-              {getRecordIcon(record.type)}
-              <CardTitle className="text-blue-600">{record.type}</CardTitle>
+    <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">Medical Records</h2>
+          <p className="text-slate-500 mt-1 text-sm">Manage and track your health history in one place.</p>
+        </div>
+        <Badge variant="secondary" className="h-fit px-3 py-1">
+          {records.length} Total Records
+        </Badge>
+      </div>
+
+      <div className="grid gap-6">
+        {currentRecords.length > 0 ? (
+          currentRecords.map((record) => {
+            const theme = getRecordTheme(record.type);
+            const date = record.details.consultationDate || record.details.surgeryDate || record.details.medicines?.[0]?.startDate;
+
+            return (
+              <Card key={record.id} className="group overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 ring-1 ring-slate-200">
+                <div className={`h-1.5 w-full ${theme.stripe}`} />
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div className="flex gap-4">
+                    <div className={`p-3 rounded-2xl ${theme.bg} ${theme.color} transition-transform group-hover:scale-110 duration-300`}>
+                      {theme.icon}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-xl font-bold text-slate-800 capitalize">{record.type}</CardTitle>
+                        {record.uploaded_file_url && <Badge variant="outline" className="text-[10px] uppercase">Attachment</Badge>}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-1">
+                        <Clock className="h-3 w-3" />
+                        {date ? new Date(date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'No date set'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-9 w-9 p-0 rounded-full hover:bg-slate-100">
+                        <MoreVertical className="h-5 w-5 text-slate-400" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem onClick={() => handleEdit(record)} className="cursor-pointer">
+                        <Pencil className="mr-2 h-4 w-4" /> Edit Record
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-red-600 focus:bg-red-50 cursor-pointer"
+                        onClick={() => { setRecordToDelete(record.id); setDeleteDialogOpen(true); }}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </CardHeader>
+
+                <CardContent className="pt-2 pb-6">
+                  {renderDetails(record)}
+
+                  {record.uploaded_file_url && (
+                    <div className="mt-6">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setViewingDocument(record.uploaded_file_url!)}
+                        className="w-full md:w-auto bg-slate-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                      >
+                        <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                        Quick View Document
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )
+          })
+        ) : (
+          <div className="text-center py-20 border-2 border-dashed rounded-3xl border-slate-200">
+            <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Clipboard className="h-8 w-8 text-slate-300" />
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleEdit(record)}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  className="text-red-600"
-                  onClick={() => {
-                    setRecordToDelete(record.id);
-                    setDeleteDialogOpen(true);
-                  }}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </CardHeader>
-          <CardContent className="pt-4">
-            {renderDetails(record)}
-            {record.uploaded_file_url && (
-              <div className="mt-4 pt-4 border-t">
-                <a 
-                  href={record.uploaded_file_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="text-blue-500 hover:text-blue-700 underline flex items-center gap-2"
-                >
-                  <FileText className="h-4 w-4" />
-                  View Attached File
+            <h3 className="text-lg font-medium text-slate-900">No records found</h3>
+            <p className="text-slate-500">Your health records will appear here once added.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Document View Modal */}
+      <Dialog open={!!viewingDocument} onOpenChange={(open) => { if (!open) setViewingDocument(null); }}>
+        <DialogContent
+          className="max-w-4xl w-[95vw] h-[90vh] p-0 overflow-hidden flex flex-col rounded-2xl border-none shadow-2xl"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <DialogHeader className="p-4 border-b bg-white flex flex-row items-center justify-between">
+            <div className="flex flex-col">
+              <DialogTitle className="text-lg font-semibold flex items-center gap-2">
+                {/* <FileText className="h-5 w-5 text-blue-500" /> */}
+                Document Viewer
+              </DialogTitle>
+              <span className="text-xs text-slate-400 truncate max-w-[200px] md:max-w-md">
+                {/* {viewingDocument} */}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              {/* <Button variant="outline" size="sm" asChild className="hidden md:flex">
+                <a href={viewingDocument!} download target="_blank" rel="noopener noreferrer">
+                  Download
                 </a>
-              </div>
+              </Button> */}
+              {/* <Button size="sm" asChild>
+                <a href={viewingDocument!} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-1" />
+                  Full Screen
+                </a>
+              </Button> */}
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 bg-slate-900 flex items-center justify-center overflow-hidden relative">
+            {viewingDocument && (
+              viewingDocument.toLowerCase().includes('.pdf') ? (
+                <object
+                  data={viewingDocument}
+                  type="application/pdf"
+                  className="w-full h-full"
+                >
+                  <div className="flex flex-col items-center justify-center text-white p-6 text-center">
+                    <FileText className="h-12 w-12 mb-4 text-slate-500" />
+                    <p className="mb-4">This browser doesn't support inline PDFs.</p>
+                    <Button asChild variant="secondary">
+                      <a href={viewingDocument} target="_blank" rel="noopener noreferrer">
+                        Click here to view the PDF
+                      </a>
+                    </Button>
+                  </div>
+                </object>
+              ) : (
+                <div className="w-full h-full overflow-auto flex items-center justify-center p-4">
+                  <img
+                    src={viewingDocument}
+                    alt="Medical Document"
+                    className="max-w-full max-h-full object-contain shadow-2xl rounded-sm"
+                    loading="lazy"
+                  />
+                </div>
+              )
             )}
-          </CardContent>
-        </Card>
-      ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {records.length > recordsPerPage && (
-        <Pagination className="mt-6">
+        <Pagination className="mt-10">
           <PaginationContent>
             <PaginationItem>
-              <PaginationPrevious 
+              <PaginationPrevious
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
               />
             </PaginationItem>
             {renderPaginationItems()}
             <PaginationItem>
-              <PaginationNext 
+              <PaginationNext
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
               />
             </PaginationItem>
           </PaginationContent>
         </Pagination>
       )}
+
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle className="text-xl">Delete Record?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the medical record.
+              This action is permanent. All data associated with this medical record will be removed from our servers.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl">Keep Record</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => recordToDelete && handleDelete(recordToDelete)}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-red-600 hover:bg-red-700 rounded-xl"
             >
-              Delete
+              Confirm Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
       <EditRecordForm
         isOpen={editDialogOpen}
         onClose={() => setEditDialogOpen(false)}
