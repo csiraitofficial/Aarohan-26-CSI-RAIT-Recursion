@@ -16,6 +16,8 @@ const Appointments = lazy(() => import("@/pages/Appointments"));
 const PremiumPredictor = lazy(() => import("@/pages/PremiumPredictor"));
 const UserProfilePage = lazy(() => import("@/pages/UserProfile"));
 const GovtPlans = lazy(() => import("@/pages/GovtPlans"));
+const DoctorAuthPage = lazy(() => import("@/pages/DoctorAuth"));
+const DoctorDashboard = lazy(() => import("@/pages/DoctorDashboard"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -35,6 +37,8 @@ function App() {
           <Routes>
             <Route path="/" element={<HealixLandingPage />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/doctor/auth" element={<DoctorAuthPage />} />
+            <Route path="/doctor/dashboard/:uid" element={<DoctorDashboard />} />
             <Route path="/userdashboard/:uid" element={<Dashboard />} />
             <Route path="/healthrecords/:uid" element={<HealthRecords />} />
             <Route path="/medichat/:uid" element={<MediChatPage />} />

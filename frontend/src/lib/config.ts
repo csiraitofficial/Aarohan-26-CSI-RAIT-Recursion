@@ -79,3 +79,26 @@ export const GOVT_INSURANCE_ENDPOINTS = {
   history: `${API_BASE_URL}/api/govt-insurance/history`,
   schemes: `${API_BASE_URL}/api/govt-insurance/schemes`,
 };
+
+// Doctor auth endpoints
+export const DOCTOR_AUTH_ENDPOINTS = {
+  register: `${API_BASE_URL}/api/auth/doctor/register`,
+  google: `${API_BASE_URL}/api/auth/doctor/google`,
+};
+
+// Doctor dashboard endpoints
+export const DOCTOR_ENDPOINTS = {
+  profile: `${API_BASE_URL}/api/doctor/profile`,
+  appointments: `${API_BASE_URL}/api/doctor/appointments`,
+  cancelAppointment: (id: string) =>
+    `${API_BASE_URL}/api/doctor/appointments/${id}/cancel`,
+  completeAppointment: (id: string) =>
+    `${API_BASE_URL}/api/doctor/appointments/${id}/complete`,
+  noteAppointment: (id: string) =>
+    `${API_BASE_URL}/api/doctor/appointments/${id}/note`,
+  availability: `${API_BASE_URL}/api/doctor/availability`,
+  registeredDoctors: `${API_BASE_URL}/api/doctors/registered`,
+  doctorSlots: (doctorId: number, date: string) =>
+    `${API_BASE_URL}/api/doctors/${doctorId}/slots?date=${date}`,
+  bookDoctor: `${API_BASE_URL}/api/doctors/book`,
+};

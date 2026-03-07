@@ -1,4 +1,4 @@
-import  { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { Calendar, Clock, User2 } from "lucide-react";
 import {
@@ -18,6 +18,9 @@ interface Appointment {
   start_time: string;
   provider_name: string;
   confirmed: boolean;
+  status?: string;
+  doctor_note?: string;
+  title?: string;
 }
 
 interface AppointmentsListProps {
@@ -150,29 +153,65 @@ export default function AppointmentsList({
                       <div className="flex items-center space-x-2">
                         <User2 className="h-5 w-5 text-blue-600" />
                         <p className="text-sm font-medium text-gray-700">
-                          Dr. {appointment.provider_name}
+                          {appointment.title || `Dr. ${appointment.provider_name}`}
                         </p>
                       </div>
 
-                      <span
-                        className={cn(
-                          "inline-flex items-center px-3 py-1 rounded-full text-sm font-medium transition-colors",
-                          "ring-1 ring-inset",
-                          appointment.confirmed
-                            ? "bg-green-50 text-green-700 ring-green-600/20"
-                            : "bg-yellow-50 text-yellow-800 ring-yellow-600/20"
-                        )}
-                      >
+                      {/* Status Badge */}
+                      {appointment.status ? (
                         <span
                           className={cn(
-                            "mr-1.5 h-1.5 w-1.5 rounded-full",
-                            appointment.confirmed
-                              ? "bg-green-600"
-                              : "bg-yellow-600"
+                            "inline-flex items-center px-3 py-1 rounded-full text-sm font-medium transition-colors",
+                            "ring-1 ring-inset",
+                            appointment.status === "completed"
+                              ? "bg-green-50 text-green-700 ring-green-600/20"
+                              : appointment.status === "cancelled"
+                                ? "bg-red-50 text-red-700 ring-red-600/20"
+                                : "bg-blue-50 text-blue-700 ring-blue-600/20"
                           )}
-                        ></span>
-                        {appointment.confirmed ? "Confirmed" : "Pending"}
-                      </span>
+                        >
+                          <span
+                            className={cn(
+                              "mr-1.5 h-1.5 w-1.5 rounded-full",
+                              appointment.status === "completed"
+                                ? "bg-green-600"
+                                : appointment.status === "cancelled"
+                                  ? "bg-red-600"
+                                  : "bg-blue-600"
+                            )}
+                          ></span>
+                          {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
+                        </span>
+                      ) : (
+                        <span
+                          className={cn(
+                            "inline-flex items-center px-3 py-1 rounded-full text-sm font-medium transition-colors",
+                            "ring-1 ring-inset",
+                            appointment.confirmed
+                              ? "bg-green-50 text-green-700 ring-green-600/20"
+                              : "bg-yellow-50 text-yellow-800 ring-yellow-600/20"
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "mr-1.5 h-1.5 w-1.5 rounded-full",
+                              appointment.confirmed
+                                ? "bg-green-600"
+                                : "bg-yellow-600"
+                            )}
+                          ></span>
+                          {appointment.confirmed ? "Confirmed" : "Pending"}
+                        </span>
+                      )}
+
+                      {/* Doctor Note */}
+                      {appointment.doctor_note && (
+                        <div className="mt-2 p-3 bg-amber-50 rounded-lg border border-amber-100">
+                          <p className="text-sm text-amber-800">
+                            <span className="font-medium">Doctor's Note:</span> {appointment.doctor_note}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>

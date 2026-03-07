@@ -20,9 +20,12 @@ import {
   ChevronRight,
   BadgeInfo,
   MessageSquare,
+  CheckCircle2,
+  CalendarPlus,
 } from "lucide-react";
 import PlaceDetailsModal from "./PlaceDetailsModal";
-import { MAPS_ENDPOINTS } from "@/lib/config";
+import BookingModal from "./BookingModal";
+import { MAPS_ENDPOINTS, DOCTOR_ENDPOINTS } from "@/lib/config";
 import { getAuth } from "firebase/auth";
 import { loadGoogleMapsApi } from "@/lib/loadGoogleMaps";
 
@@ -61,6 +64,15 @@ interface Place {
     relative_time_description: string;
     text: string;
   }>;
+}
+
+interface RegisteredDoctor {
+  id: number;
+  name: string;
+  specialty?: string;
+  clinic_name?: string;
+  clinic_address?: string;
+  phone?: string;
 }
 
 const ITEMS_PER_PAGE = 5;
@@ -221,19 +233,17 @@ const SpecialtyButton = ({
 }) => (
   <button
     onClick={onClick}
-    className={`group p-6 rounded-xl border-2 transition-all duration-300 ${
-      isSelected
+    className={`group p-6 rounded-xl border-2 transition-all duration-300 ${isSelected
         ? "border-blue-500 bg-blue-50 shadow-md"
         : "border-gray-100 hover:border-blue-300 hover:bg-blue-50 hover:shadow-md"
-    } bg-white`}
+      } bg-white`}
   >
     <div className="flex flex-col items-center space-y-3">
       <specialty.icon
-        className={`w-8 h-8 transition-colors duration-300 ${
-          isSelected
+        className={`w-8 h-8 transition-colors duration-300 ${isSelected
             ? specialty.color
             : "text-gray-400 group-hover:" + specialty.color
-        }`}
+          }`}
       />
       <span className="font-medium text-gray-900 text-sm text-center">
         {specialty.name}
@@ -273,20 +283,34 @@ const PlaceCard = ({
   place,
   onShowDetails,
   onShowReviews,
+  matchedDoctor,
+  onBookAppointment,
 }: {
   place: Place;
   onShowDetails: () => void;
   onShowReviews: () => void;
+  matchedDoctor?: RegisteredDoctor | null;
+  onBookAppointment?: (doctor: RegisteredDoctor) => void;
 }) => (
-  <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4">
+  <div className={`bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 ${matchedDoctor ? 'border-l-4 border-emerald-500' : ''}`}>
     <div className="flex items-start justify-between">
       <div className="flex items-start space-x-3">
         <div className="p-2 bg-blue-50 rounded-lg">
           <MapPin className="h-5 w-5 text-blue-500" />
         </div>
         <div>
-          <h3 className="font-semibold text-gray-900">{place.name}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-gray-900">{place.name}</h3>
+            {matchedDoctor && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+                <CheckCircle2 className="h-3 w-3" /> Verified Doctor
+              </span>
+            )}
+          </div>
           <p className="text-gray-600 mt-1">{place.vicinity}</p>
+          {matchedDoctor && matchedDoctor.specialty && (
+            <p className="text-sm text-emerald-600 mt-1 font-medium">{matchedDoctor.specialty}</p>
+          )}
           {place.rating && (
             <div className="flex items-center mt-2">
               <span className="text-yellow-400">★</span>
@@ -299,6 +323,15 @@ const PlaceCard = ({
         </div>
       </div>
       <div className="flex space-x-2">
+        {matchedDoctor && onBookAppointment && (
+          <button
+            onClick={() => onBookAppointment(matchedDoctor)}
+            className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg transition-colors text-sm font-medium shadow-sm"
+          >
+            <CalendarPlus className="h-4 w-4" />
+            <span>Book Appointment</span>
+          </button>
+        )}
         {place.photos && (
           <button
             onClick={onShowDetails}
@@ -372,6 +405,8 @@ const FindServices = () => {
     lng: number;
   } | null>(null);
   const [mapsReady, setMapsReady] = useState<boolean>(Boolean(window.google?.maps));
+  const [registeredDoctors, setRegisteredDoctors] = useState<RegisteredDoctor[]>([]);
+  const [bookingDoctor, setBookingDoctor] = useState<RegisteredDoctor | null>(null);
 
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
@@ -388,6 +423,22 @@ const FindServices = () => {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const currentPlaces = places.slice(startIndex, endIndex);
+
+  // Fetch registered doctors on mount
+  useEffect(() => {
+    const fetchRegisteredDoctors = async () => {
+      try {
+        const res = await fetch(DOCTOR_ENDPOINTS.registeredDoctors);
+        if (res.ok) {
+          const data = await res.json();
+          setRegisteredDoctors(data.doctors || []);
+        }
+      } catch (err) {
+        console.error("Error fetching registered doctors:", err);
+      }
+    };
+    fetchRegisteredDoctors();
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -408,6 +459,21 @@ const FindServices = () => {
       mounted = false;
     };
   }, []);
+
+  // Match a place name against registered doctors
+  const findMatchingDoctor = (placeName: string): RegisteredDoctor | null => {
+    const normalizedPlace = placeName.toLowerCase().trim();
+    return registeredDoctors.find((doc) => {
+      const docName = doc.name.toLowerCase().trim();
+      const clinicName = (doc.clinic_name || "").toLowerCase().trim();
+      return (
+        normalizedPlace.includes(docName) ||
+        docName.includes(normalizedPlace) ||
+        (clinicName && normalizedPlace.includes(clinicName)) ||
+        (clinicName && clinicName.includes(normalizedPlace))
+      );
+    }) || null;
+  };
 
   const fetchPlaces = async (type: string, lat: number, lng: number) => {
     setLoading(true);
@@ -435,8 +501,8 @@ const FindServices = () => {
         const errBody = await response.json().catch(() => ({}));
         throw new Error(
           errBody?.details ||
-            errBody?.error ||
-            `Failed to fetch nearby ${type}`,
+          errBody?.error ||
+          `Failed to fetch nearby ${type}`,
         );
       }
 
@@ -593,15 +659,14 @@ const FindServices = () => {
                     <div class="p-2">
                         <h3 class="font-semibold">${place.name}</h3>
                         <p class="text-sm text-gray-600">${place.vicinity}</p>
-                        ${
-                          place.rating
-                            ? `<div class="flex items-center mt-1">
+                        ${place.rating
+            ? `<div class="flex items-center mt-1">
                                 <span class="text-yellow-500">★</span>
                                 <span class="ml-1">${place.rating}</span>
                                 <span class="text-sm text-gray-500 ml-1">(${place.user_ratings_total} reviews)</span>
                             </div>`
-                            : ""
-                        }
+            : ""
+          }
                     </div>
                 `,
       });
@@ -709,20 +774,25 @@ const FindServices = () => {
             </div>
 
             <div className="space-y-4">
-              {currentPlaces.map((place) => (
-                <PlaceCard
-                  key={place.place_id}
-                  place={place}
-                  onShowDetails={() => {
-                    setSelectedPlace(place);
-                    setActiveTab("info");
-                  }}
-                  onShowReviews={() => {
-                    setSelectedPlace(place);
-                    setActiveTab("reviews");
-                  }}
-                />
-              ))}
+              {currentPlaces.map((place) => {
+                const matchedDoctor = findMatchingDoctor(place.name);
+                return (
+                  <PlaceCard
+                    key={place.place_id}
+                    place={place}
+                    matchedDoctor={matchedDoctor}
+                    onBookAppointment={(doctor) => setBookingDoctor(doctor)}
+                    onShowDetails={() => {
+                      setSelectedPlace(place);
+                      setActiveTab("info");
+                    }}
+                    onShowReviews={() => {
+                      setSelectedPlace(place);
+                      setActiveTab("reviews");
+                    }}
+                  />
+                );
+              })}
             </div>
 
             {totalPages > 1 && (
@@ -747,6 +817,15 @@ const FindServices = () => {
             onClose={() => setSelectedPlace(null)}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
+          />
+        )}
+
+        {/* Booking Modal */}
+        {bookingDoctor && (
+          <BookingModal
+            doctor={bookingDoctor}
+            onClose={() => setBookingDoctor(null)}
+            onBooked={() => setBookingDoctor(null)}
           />
         )}
       </div>

@@ -120,52 +120,52 @@ router.get('/patients', authenticateUser, async (req, res) => {
 });
 // Check if patient exists by email
 router.get('/patients/check', authenticateUser, async (req, res) => {
-    try {
-      const { email } = req.query;
-      if (!email) {
-        return res.status(400).json({ error: 'Email is required' });
-      }
-  
-      const patients = await nexhealthService.searchPatients(email);
-      console.log(patients.data);
-      const existingPatient = !(patients.data.patients.length==0);
-  
-      if (existingPatient) {
-        console.log('Patient exists:', existingPatient);
-        res.json({ exists: true, patientId: patients.data.patients[0].id });
-      } else {
-        res.json({ exists: false });
-      }
-    } catch (error) {
-      console.error('Error checking patient, falling back:', error?.response?.data || error?.message || error);
-      res.json({ exists: true, patientId: 1, source: 'fallback' });
+  try {
+    const { email } = req.query;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
     }
-  });
-  
-  // Create new patient
-  router.post('/patients', authenticateUser, async (req, res) => {
-    try {
-      const {providerid} = req.query;
-      console.log(providerid);
-      const patient = await nexhealthService.createPatient(req.body,providerid);
-      res.json(patient);
-    } catch (error) {
-      if (error.response?.status === 400 && error.response.data?.message?.includes('already exists')) {
-        res.status(400).json({ message: error.response.data.message });
-      } else {
-        console.error('Error creating patient, falling back:', error?.response?.data || error?.message || error);
-        res.json({
-          data: {
-            id: 1,
-          },
-          source: 'fallback',
-        });
 
-        
-      }
+    const patients = await nexhealthService.searchPatients(email);
+    console.log(patients.data);
+    const existingPatient = !(patients.data.patients.length == 0);
+
+    if (existingPatient) {
+      console.log('Patient exists:', existingPatient);
+      res.json({ exists: true, patientId: patients.data.patients[0].id });
+    } else {
+      res.json({ exists: false });
     }
-  });
-  
+  } catch (error) {
+    console.error('Error checking patient, falling back:', error?.response?.data || error?.message || error);
+    res.json({ exists: true, patientId: 1, source: 'fallback' });
+  }
+});
+
+// Create new patient
+router.post('/patients', authenticateUser, async (req, res) => {
+  try {
+    const { providerid } = req.query;
+    console.log(providerid);
+    const patient = await nexhealthService.createPatient(req.body, providerid);
+    res.json(patient);
+  } catch (error) {
+    if (error.response?.status === 400 && error.response.data?.message?.includes('already exists')) {
+      res.status(400).json({ message: error.response.data.message });
+    } else {
+      console.error('Error creating patient, falling back:', error?.response?.data || error?.message || error);
+      res.json({
+        data: {
+          id: 1,
+        },
+        source: 'fallback',
+      });
+
+
+    }
+  }
+});
+
 
 // Get all providers
 router.get('/providers', authenticateUser, async (req, res) => {
@@ -189,15 +189,15 @@ router.get('/providers', authenticateUser, async (req, res) => {
       source: 'fallback',
     });
 
-    
+
   }
 });
 
 // Get available appointment slots
 router.get('/slots', authenticateUser, async (req, res) => {
   try {
-    const { startDate, days,providerId } = req.query;
-    const slots = await nexhealthService.getAppointmentSlots(startDate, days,providerId);
+    const { startDate, days, providerId } = req.query;
+    const slots = await nexhealthService.getAppointmentSlots(startDate, days, providerId);
     const slotGroups = Array.isArray(slots?.data) ? slots.data : [];
     if (!slotGroups.length) {
       return res.json(buildFallbackSlots(startDate, days, providerId));
@@ -214,35 +214,35 @@ router.get('/slots', authenticateUser, async (req, res) => {
 router.get('/', authenticateUser, async (req, res) => {
   try {
     const { email } = req.query;
-      if (!email) {
-        return res.status(400).json({ error: 'Email is required' });
-      }
-  
-      const patients = await nexhealthService.searchPatients(email);
-      console.log(patients.data);
-      const existingPatient = !(patients.data.patients.length==0);
-      if(existingPatient){
-        const { page = 1, perPage = 10, status } = req.query;
-        
-        const appointments = await nexhealthService.getAppointments(page, perPage, status,patients.data.patients[0].id
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
 
-        );
-        const appointmentList =
-          appointments?.data?.appointments ||
-          appointments?.data ||
-          appointments?.appointments ||
-          [];
-        return res.json({
-          data: Array.isArray(appointmentList)
-            ? appointmentList.map(normalizeAppointment)
-            : [],
-        });
+    const patients = await nexhealthService.searchPatients(email);
+    console.log(patients.data);
+    const existingPatient = !(patients.data.patients.length == 0);
+    if (existingPatient) {
+      const { page = 1, perPage = 10, status } = req.query;
 
-      }
-      else{
-        return res.json({ data: [] });
-      }
-      
+      const appointments = await nexhealthService.getAppointments(page, perPage, status, patients.data.patients[0].id
+
+      );
+      const appointmentList =
+        appointments?.data?.appointments ||
+        appointments?.data ||
+        appointments?.appointments ||
+        [];
+      return res.json({
+        data: Array.isArray(appointmentList)
+          ? appointmentList.map(normalizeAppointment)
+          : [],
+      });
+
+    }
+    else {
+      return res.json({ data: [] });
+    }
+
   } catch (error) {
     console.error('Failed to fetch NexHealth appointments, using Supabase fallback:', error?.response?.data || error?.message || error);
     const { email } = req.query;
@@ -279,9 +279,9 @@ router.get('/', authenticateUser, async (req, res) => {
 router.post('/book', authenticateUser, async (req, res) => {
   try {
     const { email } = req.query;
-      if (!email) {
-        return res.status(400).json({ error: 'Email is required' });
-      }
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
 
     let nexhealthAppointment = null;
     try {
@@ -289,20 +289,40 @@ router.post('/book', authenticateUser, async (req, res) => {
     } catch (error) {
       console.error('NexHealth booking failed, proceeding with fallback booking:', error?.response?.data || error?.message || error);
     }
-  
+
     const userLookup = await getUserByEmail(email);
     if (!userLookup.data) {
       return res.status(404).json({ error: 'User not found in Supabase' });
     }
 
+    // Try to match provider_name against registered doctors
+    let doctorId = null;
+    const providerName = req.body.provider_name || '';
+    if (providerName) {
+      const { data: matchedDoctors } = await supabase
+        .from('doctors')
+        .select('id, name')
+        .ilike('name', `%${providerName}%`);
+
+      if (matchedDoctors && matchedDoctors.length > 0) {
+        doctorId = matchedDoctors[0].id;
+        console.log(`Matched provider "${providerName}" to doctor id ${doctorId}`);
+      }
+    }
+
     const { data: supabaseAppointment, error: apptError } = await supabase
       .from('appointments')
       .insert({
-        user_id: userLookup.data.id,         // link to the user
-        provider_id: req.body.provider_id,   // or whatever your "doctor" ID is
-        start_time: req.body.start_time,     // must be a date/time format
+        user_id: userLookup.data.id,
+        provider_id: req.body.provider_id,
+        start_time: req.body.start_time,
         notes: req.body.notes ?? null,
-        provider_name: req.body.provider_name,
+        provider_name: providerName,
+        doctor_id: doctorId,
+        status: 'scheduled',
+        patient_name: userLookup.data.name || email,
+        patient_email: email,
+        title: providerName ? `Appointment with Dr. ${providerName}` : 'Appointment',
       })
       .single();
 
@@ -321,7 +341,7 @@ router.post('/book', authenticateUser, async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).json({ error: 'Failed to create appointment' });
-   
+
   }
 });
 router.get('/recent', authenticateUser, async (req, res) => {

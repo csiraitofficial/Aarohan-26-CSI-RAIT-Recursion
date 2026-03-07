@@ -137,7 +137,7 @@ export default function AddRecordModal({
                 onChange={(e) =>
                   setFormData({ ...formData, consultationDate: e.target.value })
                 }
-                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 [&::-webkit-calendar-picker-indicator]:invert-0 [&::-webkit-calendar-picker-indicator]:brightness-0"
               />
             </div>
             <div className="space-y-2">
@@ -208,34 +208,44 @@ export default function AddRecordModal({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="lab_report">Lab Report</SelectItem>
-
-                <SelectItem value="consultation">
-                  Doctor's Consultation
-                </SelectItem>
+                <SelectItem value="consultation">Doctor's Consultation</SelectItem>
                 <SelectItem value="surgery">Surgery Record</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
           <ScrollArea className="h-[60vh] pr-4">
-            {renderFormFields()}
+            <div className="space-y-6">
+              {/* Dynamic Fields (Doctor's Note, etc.) */}
+              {renderFormFields()}
+
+              {/* The ONLY File Upload - positioned right after the notes */}
+              {recordType && (
+                <div className="space-y-2 pt-2">
+                  <Label htmlFor="file" className="text-gray-700">
+                    Upload Attachment (Reports/Notes)
+                  </Label>
+                  <Input
+                    id="file"
+                    type="file"
+                    onChange={(e) =>
+                      setFormData({ ...formData, file: e.target.files?.[0] })
+                    }
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 bg-white"
+                  />
+                </div>
+              )}
+            </div>
           </ScrollArea>
-          <div className="space-y-2">
-            <Label htmlFor="file" className="text-gray-700">
-              Upload File (optional)
-            </Label>
-            <Input
-              id="file"
-              type="file"
-              onChange={(e) =>
-                setFormData({ ...formData, file: e.target.files?.[0] })
-              }
-              className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-            />
-          </div>
+
+          {/* REMOVED: The duplicate file input block was here. 
+           It is now correctly inside the ScrollArea. 
+        */}
+
           <DialogFooter>
             <Button
               type="submit"
-              className="bg-blue-600 text-white hover:bg-blue-700"
+              className="bg-blue-600 text-white hover:bg-blue-700 w-full"
             >
               Add Record
             </Button>

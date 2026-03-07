@@ -315,6 +315,11 @@ export default function AuthPage() {
                 Google
               </Button>
             </div>
+            <div className="mt-4 text-center">
+              <a href="/doctor/auth" className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors">
+                Are you a Doctor? Login here →
+              </a>
+            </div>
           </div>
         </div>
       </div>

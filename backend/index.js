@@ -20,6 +20,7 @@ import { promisify } from "util";
 import appointmentRoutes from "./routes/appointmentRoutes.js";
 import premiumPredictorRoutes from "./routes/premiumPredictorRoutes.js";
 import govtInsuranceRoutes from "./routes/govtInsuranceRoutes.js";
+import doctorRoutes from "./routes/doctorRoutes.js";
 const upload = multer({ dest: "uploads/" });
 
 
@@ -1017,6 +1018,84 @@ app.get("/api/medicine-search/", authenticateUser, async (req, res) => {
 //Appointment Routes
 
 app.use("/api/appointments", appointmentRoutes);
+
+// Doctor Routes
+app.use("/api/doctor", doctorRoutes);
+app.use("/api/doctors", doctorRoutes);
+
+// Doctor Registration
+app.post("/api/auth/doctor/register", async (req, res) => {
+  try {
+    const { uid, email, name, specialty, clinic_name, clinic_address, phone } = req.body;
+
+    if (!uid || !email || !name) {
+      return res.status(400).json({ error: "Missing required fields: uid, email, name" });
+    }
+
+    console.log("Registering doctor:", { uid, email, name, specialty });
+
+    // Update user profile in Firebase
+    try {
+      await admin.auth().updateUser(uid, { displayName: name });
+    } catch (firebaseError) {
+      console.warn("Firebase update warning:", firebaseError.message);
+    }
+
+    // Insert into doctors table
+    const { data, error } = await supabase
+      .from("doctors")
+      .insert([{ uid, email, name, specialty, clinic_name, clinic_address, phone }])
+      .select();
+
+    if (error) {
+      if (error.code === "23505" || error.message.includes("unique")) {
+        const { data: updateData, error: updateError } = await supabase
+          .from("doctors")
+          .update({ email, name, specialty, clinic_name, clinic_address, phone })
+          .eq("uid", uid)
+          .select();
+
+        if (updateError) {
+          return res.status(500).json({ error: updateError.message });
+        }
+        return res.status(200).json({ message: "Doctor updated successfully", data: updateData });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.status(200).json({ message: "Doctor registered successfully", data });
+  } catch (error) {
+    console.error("Doctor registration error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Doctor Google sign-in
+app.post("/api/auth/doctor/google", async (req, res) => {
+  try {
+    const { uid, email, name, specialty, clinic_name, clinic_address, phone } = req.body;
+
+    if (!uid || !email) {
+      return res.status(400).json({ error: "Missing required fields: uid, email" });
+    }
+
+    const { data, error } = await supabase
+      .from("doctors")
+      .upsert([{ uid, email, name, specialty, clinic_name, clinic_address, phone }], {
+        onConflict: "uid",
+      })
+      .select();
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.status(200).json({ message: "Doctor Google sign-in successful", data });
+  } catch (error) {
+    console.error("Doctor Google auth error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Routes are already mounted at the top of the file
 
