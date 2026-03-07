@@ -56,16 +56,32 @@ const normalizeProvider = (provider) => ({
   locations: provider?.locations || [],
 });
 
-const normalizeAppointment = (appt) => ({
-  id: appt?.id?.toString?.() || `${Date.now()}`,
-  start_time: appt?.start_time || appt?.start || appt?.date || new Date().toISOString(),
-  provider_name:
+const normalizeAppointment = (appt) => {
+  // Try to extract doctor name from the title field (e.g. "Appointment with Dr. Vijay Shetty")
+  let providerName =
     appt?.provider_name ||
     appt?.provider?.name ||
     [appt?.provider?.first_name, appt?.provider?.last_name].filter(Boolean).join(' ').trim() ||
-    'Provider',
-  confirmed: Boolean(appt?.confirmed ?? appt?.is_confirmed ?? true),
-});
+    '';
+
+  // If no provider_name but we have a title like "Appointment with Dr. X", extract the name
+  if (!providerName && appt?.title) {
+    const match = appt.title.match(/(?:Appointment with\s+)?(?:Dr\.?\s+)?(.+)/i);
+    if (match) {
+      providerName = match[1].trim();
+    }
+  }
+
+  return {
+    id: appt?.id?.toString?.() || `${Date.now()}`,
+    start_time: appt?.start_time || appt?.start || appt?.date || new Date().toISOString(),
+    provider_name: providerName || 'Provider',
+    confirmed: Boolean(appt?.confirmed ?? appt?.is_confirmed ?? (appt?.status === 'scheduled' || appt?.status === 'completed') ?? true),
+    status: appt?.status || null,
+    doctor_note: appt?.doctor_note || null,
+    title: appt?.title || null,
+  };
+};
 
 const buildFallbackSlots = (startDate, days = 7, providerId = 1001) => {
   const slots = [];
