@@ -1,5 +1,5 @@
 
-import { MapPin, FileText, Settings, LogOut, Activity, AlarmClock, PillBottle, BadgePercentIcon } from 'lucide-react';
+import { MapPin, FileText, Calendar, Settings, LogOut, Activity, MessageSquare, AlarmClock, PillBottle, BadgePercentIcon } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { toast } from "react-hot-toast";
 import { signOut } from "firebase/auth";
